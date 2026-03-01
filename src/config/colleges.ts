@@ -3,7 +3,7 @@ export const COLLEGES = [
     id: "capt",
     label: "CAPT",
     houses: [
-      { id: "roc", label: "ROC" },
+      { id: "roc", label: "Roc" },
       { id: "dragon", label: "Dragon" },
       { id: "garuda", label: "Garuda" },
       { id: "phoenix", label: "Phoenix" },
@@ -17,17 +17,19 @@ export const COLLEGES = [
       { id: "shan", label: "Shan" },
       { id: "ora", label: "Ora" },
       { id: "gaja", label: "Gaja" },
-      { id: "tembra", label: "Tembra" },
+      { id: "tancho", label: "Tancho" },
+      { id: "ponya", label: "Ponya" }
     ],
   },
   {
     id: "rc4",
     label: "RC4",
-    houses: [
-      { id: "tectona", label: "Tectona" },
-      { id: "cengal", label: "Cengal" },
-      { id: "saga", label: "Saga" },
-      { id: "angsana", label: "Angsana" },
+    houses: [//Aquila, Noctua, Ursa, Leo, and Draco.
+      { id: "acquila", label: "Acquila" },
+      { id: "noctua", label: "Noctua" },
+      { id: "ursa", label: "Ursa" },
+      { id: "leo", label: "Leo" },
+      { id: "draco", label: "Draco" }
     ],
   },
   {
