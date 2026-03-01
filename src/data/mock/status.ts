@@ -4,11 +4,11 @@ const now = Date.now();
 const mins = (m: number) => m * 60_000;
 
 // Representative mock for CAPT / Garuda.
-// Covers four distinct machine states for UI development:
-//   Washer One  — in_use, registered user, queue of 1
+// Covers all four machine states for UI development:
+//   Washer One  — in_use, registered user, 1 in queue
 //   Washer Two  — available
-//   Dryer One   — in_use, hardware-detected (unregistered session)
-//   Dryer Two   — idle (cycle done, laundry not collected)
+//   Dryer One   — in_use, hardware-detected (unregistered)
+//   Dryer Two   — idle, registered user (laundry not collected)
 export const mockStatus: StatusResponse = {
   college: "capt",
   house: "garuda",
@@ -21,6 +21,7 @@ export const mockStatus: StatusResponse = {
       endTime: now + mins(24),
       hardwareDetected: false,
       queueLength: 1,
+      cycleEndedAtMs: null,
     },
     "Washer Two": {
       status: "available",
@@ -29,6 +30,7 @@ export const mockStatus: StatusResponse = {
       endTime: null,
       hardwareDetected: false,
       queueLength: 0,
+      cycleEndedAtMs: null,
     },
     "Dryer One": {
       status: "in_use",
@@ -37,14 +39,16 @@ export const mockStatus: StatusResponse = {
       endTime: now + mins(14),
       hardwareDetected: true,
       queueLength: 0,
+      cycleEndedAtMs: null,
     },
     "Dryer Two": {
       status: "idle",
       kind: "dryer",
-      currUser: null,
+      currUser: "kai_lim",
       endTime: null,
       hardwareDetected: false,
       queueLength: 0,
+      cycleEndedAtMs: now - mins(8),
     },
   },
 };

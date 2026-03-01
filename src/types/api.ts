@@ -15,10 +15,11 @@ export type MachineStatus = "available" | "in_use" | "idle";
 export type MachineStatusEntry = {
   status: MachineStatus;
   kind: MachineKind;
-  currUser: string | null;     // null for hardware-detected (unregistered) sessions
-  endTime: number | null;      // unix ms; null when available
-  hardwareDetected: boolean;   // true = vibration sensor triggered, no registered user
+  currUser: string | null;        // null for hardware-detected (unregistered) sessions
+  endTime: number | null;         // unix ms; null when available
+  hardwareDetected: boolean;      // true = vibration sensor triggered, no registered user
   queueLength: number;
+  cycleEndedAtMs: number | null;  // set when status = idle, null otherwise
 };
 
 // keyed by machine_id e.g. "Washer One"
