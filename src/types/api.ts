@@ -16,6 +16,7 @@ export type MachineStatusEntry = {
   status: MachineStatus;
   kind: MachineKind;
   currUser: string | null;        // null for hardware-detected (unregistered) sessions
+  startTimeMs: number | null;     // unix ms; set on vibration_start or /start, null when available
   endTime: number | null;         // unix ms; null when available
   hardwareDetected: boolean;      // true = vibration sensor triggered, no registered user
   queueLength: number;
