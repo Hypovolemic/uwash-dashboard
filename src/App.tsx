@@ -3,23 +3,65 @@ import { CollegeProvider, useCollege } from "./context/CollegeContext";
 import { Header, type Tab } from "./components/Header";
 import { MachineCard } from "./components/MachineCard";
 import { QueueSheet } from "./components/QueueSheet";
+import { AnalyticsSheet } from "./components/AnalyticsSheet";
 import { StatsStrip } from "./components/StatsStrip";
 import { IdleAlertBanner } from "./components/IdleAlertBanner";
-import { mockStatus } from "./data/mock";
+import { mockStatus, mockQueue, mockBuddyWash, mockAnalyticsGaruda } from "./data/mock";
+import { useTick } from "./hooks/useTick";
 
 function StatusView() {
+  useTick(1000);
+  const [queueOpen, setQueueOpen] = useState(false);
+  const [analyticsExpanded, setAnalyticsExpanded] = useState(false);
+
+  const entries = Object.entries(mockStatus.machines);
+  const washers = entries.filter(([, e]) => e.kind === "washer");
+  const dryers  = entries.filter(([, e]) => e.kind === "dryer");
+
+  // Calculate available count
+  const availableCount = entries.filter(([, e]) => e.status === "available").length;
+  const totalCount = entries.length;
+
   return (
-    <div>
+    <div className="flex flex-col gap-6 pb-24">
       <IdleAlertBanner status={mockStatus} />
-      <StatsStrip status={mockStatus} />
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
-        Machines
-      </p>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {Object.entries(mockStatus.machines).map(([machineId, entry]) => (
-          <MachineCard key={machineId} machineId={machineId} entry={entry} />
-        ))}
+      <StatsStrip status={mockStatus} onQueueTap={() => setQueueOpen(true)} />
+
+      {/* Washers row */}
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Washers</p>
+        <div className="grid grid-cols-3 gap-3">
+          {washers.map(([machineId, entry]) => (
+            <MachineCard key={machineId} machineId={machineId} entry={entry} onQueueTap={() => setQueueOpen(true)} />
+          ))}
+        </div>
       </div>
+
+      {/* Dryers row */}
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Dryers</p>
+        <div className="grid grid-cols-3 gap-3">
+          {dryers.map(([machineId, entry]) => (
+            <MachineCard key={machineId} machineId={machineId} entry={entry} onQueueTap={() => setQueueOpen(true)} />
+          ))}
+        </div>
+      </div>
+
+      <QueueSheet
+        open={queueOpen}
+        onClose={() => setQueueOpen(false)}
+        queue={mockQueue}
+      />
+
+      <AnalyticsSheet
+        expanded={analyticsExpanded}
+        onToggle={() => setAnalyticsExpanded(!analyticsExpanded)}
+        analytics={mockAnalyticsGaruda}
+        buddyWashImpact={mockBuddyWash.weeklyImpact}
+        houseName="Garuda"
+        availableCount={availableCount}
+        totalCount={totalCount}
+      />
     </div>
   );
 }
@@ -29,7 +71,7 @@ function AppContent() {
   const { collegeId, houseId } = useCollege();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50/40 to-gray-50">
+    <div className="min-h-screen bg-gray-100">
       <Header activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="max-w-md mx-auto px-4 py-6 lg:max-w-5xl lg:px-6">
         {!collegeId ? (

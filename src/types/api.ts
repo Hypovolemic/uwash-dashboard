@@ -33,9 +33,15 @@ export type StatusResponse = {
 
 // --- GET /api/{college}/{house}/queue (B-09) ---
 
+export type QueueMember = {
+  username: string;
+  position: number; // 1-indexed
+};
+
 export type QueueEntry = {
   queueLength: number;
   estWaitMins: number;
+  members: QueueMember[];
 };
 
 // keyed by machine_id
@@ -68,4 +74,24 @@ export type BuddyWashResponse = {
   lastUpdatedMs: number;
   offers: BuddyWashOffer[];
   weeklyImpact: BuddyWashWeeklyImpact;
+};
+
+// --- GET /api/{college}/{house}/analytics (D-08) ---
+
+export type HourlyUsageEntry = {
+  hour: number;        // 0-23
+  usagePercent: number; // 0-100
+};
+
+export type AnalyticsResponse = {
+  college: string;
+  house: string;
+  lastUpdatedMs: number;
+  peakHours: HourlyUsageEntry[];       // 24 entries, one per hour
+  currentPeakStart: number | null;      // hour (0-23), null if not in peak period
+  currentPeakEnd: number | null;        // hour (0-23), null if not in peak period
+  nextPeakStart: number | null;         // hour (0-23), null if no upcoming peak today
+  avgIdleTimeMins: number;              // average time laundry sits idle post-cycle
+  hardwareDetectedPercent: number;      // % of sessions that were unregistered
+  buddyWashParticipationRate: number;   // % of users who've joined at least one buddy wash
 };
