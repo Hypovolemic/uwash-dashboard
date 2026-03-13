@@ -1,73 +1,97 @@
-# React + TypeScript + Vite
+# UWash Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+UWash Dashboard is a mobile-first laundry status dashboard for UTown residences.
+It visualizes machine status, queue information, and analytics, and is designed to run both as a web app and a Telegram Mini App.
 
-Currently, two official plugins are available:
+## Live Deployment
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Production URL: `https://uwash-dashboard.vercel.app`
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Live status cards for washers and dryers
+- Registered vs hardware-detected (unregistered) machine sessions
+- Idle alert banner for laundry collection reminders
+- Queue bottom sheet with waiting positions and estimated wait times
+- Analytics bottom sheet with peak-hour chart and impact metrics
+- Telegram Mini App initialization for in-app launch support
 
-## Expanding the ESLint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- React 19 + TypeScript
+- Vite
+- Tailwind CSS
+- Recharts
+- Telegram WebApp SDK (`@twa-dev/sdk`)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Local Development
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Prerequisites
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- Node.js 18+
+- npm 9+
+
+### Install
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Run Dev Server
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+### Build
+
+```bash
+npm run build
+```
+
+### Preview Production Build
+
+```bash
+npm run preview
+```
+
+## Telegram Mini App Notes
+
+The app includes Telegram WebApp bootstrap logic in `src/main.tsx` and script loading in `index.html`.
+
+If setting up with BotFather:
+
+1. Create/configure your bot
+2. Set Web App URL to `https://uwash-dashboard.vercel.app`
+3. Add a menu button pointing to the same URL
+
+## Deployment (Vercel)
+
+This project is deployed on Vercel.
+
+Typical deploy flow:
+
+```bash
+npm run build
+npx vercel --prod
+```
+
+Note: `.vercel` is ignored in `.gitignore` and should not be committed.
+
+## Project Structure
+
+```text
+src/
+  components/      UI components (cards, sheets, header, strips)
+  context/         College/house state management
+  data/mock/       Mock API-shaped data for status/queue/analytics
+  hooks/           Reusable hooks (e.g. useTick)
+  types/           Shared API/data types
+```
+
+## Scripts
+
+- `npm run dev` - start local dev server
+- `npm run build` - type-check and build production bundle
+- `npm run preview` - preview built app locally
+- `npm run lint` - run ESLint
