@@ -9,6 +9,13 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Glassmorphic fallback for browsers that don't support backdrop-filter */
+  @supports not (backdrop-filter: blur(12px)) {
+    [style*="backdrop-filter"] {
+      background: rgba(255, 255, 255, 0.95) !important;
+    }
+  }
+
   body {
     margin: 0;
     min-width: 320px;
