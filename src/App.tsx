@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CollegeProvider, useCollege } from "./context/CollegeContext";
 import { Header, type Tab } from "./components/Header";
 import { MachineCard } from "./components/MachineCard";
+import { QueueSheet } from "./components/QueueSheet";
 import { StatsStrip } from "./components/StatsStrip";
 import { IdleAlertBanner } from "./components/IdleAlertBanner";
 import { mockStatus } from "./data/mock";
