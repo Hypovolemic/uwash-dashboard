@@ -9,6 +9,9 @@ lerna-debug.log*
 
 .env
 
+tmpclaude-*
+uwash/
+
 node_modules
 dist
 dist-ssr

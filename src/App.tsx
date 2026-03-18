@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CollegeProvider, useCollege } from "./context/CollegeContext";
 import { Header, type Tab } from "./components/Header";
 import { MachineCard } from "./components/MachineCard";
@@ -6,17 +6,51 @@ import { QueueSheet } from "./components/QueueSheet";
 import { AnalyticsSheet } from "./components/AnalyticsSheet";
 import { StatsStrip } from "./components/StatsStrip";
 import { IdleAlertBanner } from "./components/IdleAlertBanner";
+import { TelebotControlPanel } from "./components/TelebotControlPanel";
 import { mockStatus, mockQueue, mockBuddyWash, mockAnalyticsGaruda } from "./data/mock";
 import { useTick } from "./hooks/useTick";
+import { useTelebotCore } from "./hooks/useTelebotCore";
+import { getTelegramIdentity } from "./api/telegramIdentity";
 
 function StatusView() {
   useTick(1000);
+  const { collegeId, houseId } = useCollege();
+  const telegramIdentity = useMemo(() => getTelegramIdentity(), []);
   const [queueOpen, setQueueOpen] = useState(false);
   const [analyticsExpanded, setAnalyticsExpanded] = useState(false);
 
-  const entries = Object.entries(mockStatus.machines);
+  const {
+    status,
+    username,
+    setUsername,
+    selectedMachineId,
+    setSelectedMachineId,
+    selectedDurationMins,
+    setSelectedDurationMins,
+    durationOptions,
+    alerts,
+    setTimer,
+    dismissAlert,
+  } = useTelebotCore({
+    collegeId: collegeId ?? mockStatus.college,
+    houseId: houseId ?? mockStatus.house,
+    userId: telegramIdentity?.userId ?? "dashboard-user",
+    templateStatus: mockStatus,
+  });
+
+  const entries = Object.entries(status.machines);
   const washers = entries.filter(([, e]) => e.kind === "washer");
   const dryers  = entries.filter(([, e]) => e.kind === "dryer");
+  const userOptions = Array.from(
+    new Set([
+      username,
+      telegramIdentity?.username ?? "",
+      ...entries.map(([, e]) => e.currUser).filter((value): value is string => Boolean(value)),
+      "sarah_tan",
+      "kai_lim",
+      "resident_user",
+    ].filter((value) => Boolean(value && value.trim())))
+  );
 
   // Calculate available count
   const availableCount = entries.filter(([, e]) => e.status === "available").length;
@@ -24,8 +58,24 @@ function StatusView() {
 
   return (
     <div className="flex flex-col gap-6 pb-24">
-      <IdleAlertBanner status={mockStatus} />
-      <StatsStrip status={mockStatus} onQueueTap={() => setQueueOpen(true)} />
+      <TelebotControlPanel
+        autoDetectedUsername={telegramIdentity?.username ?? null}
+        userOptions={userOptions}
+        machineIds={entries.map(([machineId]) => machineId)}
+        selectedMachineId={selectedMachineId}
+        onMachineChange={setSelectedMachineId}
+        durationOptions={durationOptions}
+        selectedDurationMins={selectedDurationMins}
+        onDurationChange={setSelectedDurationMins}
+        username={username}
+        onUsernameChange={setUsername}
+        onSetTimer={setTimer}
+        alerts={alerts}
+        onDismissAlert={dismissAlert}
+      />
+
+      <IdleAlertBanner status={status} />
+      <StatsStrip status={status} onQueueTap={() => setQueueOpen(true)} />
 
       {/* Washers row */}
       <div className="flex flex-col gap-2">
@@ -58,7 +108,7 @@ function StatusView() {
         onToggle={() => setAnalyticsExpanded(!analyticsExpanded)}
         analytics={mockAnalyticsGaruda}
         buddyWashImpact={mockBuddyWash.weeklyImpact}
-        houseName="Garuda"
+        houseName={houseId ?? status.house}
         availableCount={availableCount}
         totalCount={totalCount}
       />
