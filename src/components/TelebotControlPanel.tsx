@@ -33,6 +33,7 @@ export function TelebotControlPanel({
   onDismissAlert,
 }: Props) {
   const [feedback, setFeedback] = useState<string | null>(null);
+  const hasTelegramIdentity = Boolean(autoDetectedUsername);
 
   return (
     <section className="rounded-2xl border border-blue-100 bg-white p-5 flex flex-col gap-4 shadow-sm">
@@ -51,13 +52,18 @@ export function TelebotControlPanel({
           <select
             value={username}
             onChange={(e) => onUsernameChange(e.target.value)}
-            className="min-h-[42px] rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            disabled={hasTelegramIdentity}
+            className="min-h-[42px] rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
-            {userOptions.map((option) => (
-              <option key={option} value={option}>
-                @{option}
-              </option>
-            ))}
+            {hasTelegramIdentity && autoDetectedUsername ? (
+              <option value={autoDetectedUsername}>@{autoDetectedUsername}</option>
+            ) : (
+              userOptions.map((option) => (
+                <option key={option} value={option}>
+                  @{option}
+                </option>
+              ))
+            )}
           </select>
         </div>
 

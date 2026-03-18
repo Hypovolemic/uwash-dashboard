@@ -12,6 +12,8 @@ lerna-debug.log*
 tmpclaude-*
 uwash/
 
+.agents/
+skills-lock.json
 node_modules
 dist
 dist-ssr
