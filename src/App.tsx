@@ -1,23 +1,29 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { CollegeProvider, useCollege } from "./context/CollegeContext";
-import { Header, type Tab } from "./components/Header";
+import { Header } from "./components/Header";
 import { MachineCard } from "./components/MachineCard";
 import { QueueSheet } from "./components/QueueSheet";
-import { AnalyticsSheet } from "./components/AnalyticsSheet";
 import { StatsStrip } from "./components/StatsStrip";
 import { IdleAlertBanner } from "./components/IdleAlertBanner";
 import { TelebotControlPanel } from "./components/TelebotControlPanel";
+import { InlineAnalyticsSection } from "./components/InlineAnalyticsSection";
+import { SectionSwitchBar } from "./components/SectionSwitchBar";
 import { mockStatus, mockQueue, mockBuddyWash, mockAnalyticsGaruda } from "./data/mock";
 import { useTick } from "./hooks/useTick";
 import { useTelebotCore } from "./hooks/useTelebotCore";
 import { getTelegramIdentity } from "./api/telegramIdentity";
+
+type SectionKey = "washer" | "dryer" | "analytics";
 
 function StatusView() {
   useTick(1000);
   const { collegeId, houseId } = useCollege();
   const telegramIdentity = useMemo(() => getTelegramIdentity(), []);
   const [queueOpen, setQueueOpen] = useState(false);
-  const [analyticsExpanded, setAnalyticsExpanded] = useState(false);
+  const [activeSection, setActiveSection] = useState<SectionKey>("washer");
+  const washerSectionRef = useRef<HTMLDivElement | null>(null);
+  const dryerSectionRef = useRef<HTMLDivElement | null>(null);
+  const analyticsSectionRef = useRef<HTMLDivElement | null>(null);
 
   const {
     status,
@@ -52,12 +58,26 @@ function StatusView() {
     ].filter((value) => Boolean(value && value.trim())))
   );
 
-  // Calculate available count
-  const availableCount = entries.filter(([, e]) => e.status === "available").length;
-  const totalCount = entries.length;
+  function scrollToSection(section: SectionKey) {
+    setActiveSection(section);
+    const sectionNode: HTMLDivElement | null = {
+      washer: washerSectionRef.current,
+      dryer: dryerSectionRef.current,
+      analytics: analyticsSectionRef.current,
+    }[section];
+
+    if (!sectionNode) return;
+
+    // Offset accounts for sticky header and gives breathing room for section labels.
+    const topOffsetPx = 170;
+    const targetTop =
+      sectionNode.getBoundingClientRect().top + window.scrollY - topOffsetPx;
+
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  }
 
   return (
-    <div className="flex flex-col gap-6 pb-24">
+    <div className="flex flex-col gap-6 pb-28">
       <TelebotControlPanel
         autoDetectedUsername={telegramIdentity?.username ?? null}
         userOptions={userOptions}
@@ -78,7 +98,7 @@ function StatusView() {
       <StatsStrip status={status} onQueueTap={() => setQueueOpen(true)} />
 
       {/* Washers row */}
-      <div className="flex flex-col gap-2">
+      <div ref={washerSectionRef} className="flex flex-col gap-2 scroll-mt-44">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Washers</p>
         <div className="grid grid-cols-3 gap-3">
           {washers.map(([machineId, entry]) => (
@@ -88,7 +108,7 @@ function StatusView() {
       </div>
 
       {/* Dryers row */}
-      <div className="flex flex-col gap-2">
+      <div ref={dryerSectionRef} className="flex flex-col gap-2 scroll-mt-44">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Dryers</p>
         <div className="grid grid-cols-3 gap-3">
           {dryers.map(([machineId, entry]) => (
@@ -97,32 +117,32 @@ function StatusView() {
         </div>
       </div>
 
+      {/* Inline analytics section (end of one-page flow) */}
+      <div ref={analyticsSectionRef} className="scroll-mt-44">
+        <InlineAnalyticsSection
+          analytics={mockAnalyticsGaruda}
+          buddyWashImpact={mockBuddyWash.weeklyImpact}
+          houseName={houseId ?? status.house}
+        />
+      </div>
+
+      <SectionSwitchBar activeSection={activeSection} onChange={scrollToSection} />
+
       <QueueSheet
         open={queueOpen}
         onClose={() => setQueueOpen(false)}
         queue={mockQueue}
-      />
-
-      <AnalyticsSheet
-        expanded={analyticsExpanded}
-        onToggle={() => setAnalyticsExpanded(!analyticsExpanded)}
-        analytics={mockAnalyticsGaruda}
-        buddyWashImpact={mockBuddyWash.weeklyImpact}
-        houseName={houseId ?? status.house}
-        availableCount={availableCount}
-        totalCount={totalCount}
       />
     </div>
   );
 }
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<Tab>("status");
   const { collegeId, houseId } = useCollege();
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Header activeTab={activeTab} onTabChange={setActiveTab} />
+      <Header />
       <main className="max-w-md mx-auto px-4 py-6 lg:max-w-5xl lg:px-6">
         {!collegeId ? (
           <EmptyState
@@ -136,14 +156,8 @@ function AppContent() {
             title="Select a house"
             subtitle="Pick a house to view its machines"
           />
-        ) : activeTab === "status" ? (
-          <StatusView />
         ) : (
-          <EmptyState
-            icon="📊"
-            title="Analytics"
-            subtitle="Usage charts coming in D-08"
-          />
+          <StatusView />
         )}
       </main>
     </div>
