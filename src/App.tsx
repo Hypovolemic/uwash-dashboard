@@ -66,7 +66,14 @@ function StatusView() {
       analytics: analyticsSectionRef.current,
     }[section];
 
-    sectionNode?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!sectionNode) return;
+
+    // Offset accounts for sticky header and gives breathing room for section labels.
+    const topOffsetPx = 170;
+    const targetTop =
+      sectionNode.getBoundingClientRect().top + window.scrollY - topOffsetPx;
+
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
   }
 
   return (
@@ -91,7 +98,7 @@ function StatusView() {
       <StatsStrip status={status} onQueueTap={() => setQueueOpen(true)} />
 
       {/* Washers row */}
-      <div ref={washerSectionRef} className="flex flex-col gap-2 scroll-mt-28">
+      <div ref={washerSectionRef} className="flex flex-col gap-2 scroll-mt-44">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Washers</p>
         <div className="grid grid-cols-3 gap-3">
           {washers.map(([machineId, entry]) => (
@@ -101,7 +108,7 @@ function StatusView() {
       </div>
 
       {/* Dryers row */}
-      <div ref={dryerSectionRef} className="flex flex-col gap-2 scroll-mt-28">
+      <div ref={dryerSectionRef} className="flex flex-col gap-2 scroll-mt-44">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Dryers</p>
         <div className="grid grid-cols-3 gap-3">
           {dryers.map(([machineId, entry]) => (
@@ -111,7 +118,7 @@ function StatusView() {
       </div>
 
       {/* Inline analytics section (end of one-page flow) */}
-      <div ref={analyticsSectionRef} className="scroll-mt-28">
+      <div ref={analyticsSectionRef} className="scroll-mt-44">
         <InlineAnalyticsSection
           analytics={mockAnalyticsGaruda}
           buddyWashImpact={mockBuddyWash.weeklyImpact}
