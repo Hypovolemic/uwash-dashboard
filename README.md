@@ -1,11 +1,13 @@
 # UWash Dashboard
 
-UWash Dashboard is a mobile-first laundry status dashboard for UTown residences.
-It visualizes machine status, queue information, and analytics, and is designed to run both as a web app and a Telegram Mini App.
+> Mobile-first laundry status dashboard for UTown residences, powered by real-time IoT sensor data.
+
+Part of the **UWash** ecosystem - works with the [UWash Backend](https://github.com/gabriel-wan/uwash-bot) for live machine status.
 
 ## Live Deployment
 
-- Production URL: `https://uwash-dashboard.vercel.app`
+- **Dashboard**: `https://uwash-dashboard.vercel.app`
+- **Backend API**: `https://web-production-869a0.up.railway.app`
 
 ## Features
 
@@ -95,3 +97,45 @@ src/
 - `npm run build` - type-check and build production bundle
 - `npm run preview` - preview built app locally
 - `npm run lint` - run ESLint
+
+## Backend Integration
+
+The dashboard fetches live data from the UWash backend API.
+
+### Environment Variables
+
+Create a `.env` file:
+```env
+VITE_API_BASE_URL=https://web-production-869a0.up.railway.app
+VITE_USE_MOCK=false
+```
+
+Set `VITE_USE_MOCK=true` to use mock data during development.
+
+### API Endpoints Used
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/{house}/status` | Fetch machine status for a house |
+| `POST /api/start-cycle` | Start a machine cycle |
+
+## Architecture
+
+```
+┌─────────────────┐                    ┌─────────────────┐
+│  React Dashboard│◄── GET /api/status │  Railway Backend │
+│    (Vercel)     │                    │   (Flask API)   │
+│                 │── POST /start-cycle│                 │
+└─────────────────┘                    └─────────────────┘
+         │                                      ▲
+         │                                      │
+         ▼                                      │
+┌─────────────────┐                    ┌─────────────────┐
+│  Telegram Mini  │                    │  ESP32 Sensors  │
+│      App        │                    │ (Vibration Det) │
+└─────────────────┘                    └─────────────────┘
+```
+
+## Team
+
+Built for NUS UTown Student Life Hackathon 2026
