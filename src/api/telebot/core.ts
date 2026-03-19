@@ -7,6 +7,7 @@ import type {
   StartTimerInput,
   StartTimerResult,
 } from "./types";
+import { startCycle, isUsingMock } from "../backend";
 
 const HOUSE_SELECTIONS_KEY = "uwash_bot_house_selections";
 const TIMERS_KEY = "uwash_bot_timers";
@@ -164,6 +165,18 @@ export function startMachineTimer(input: StartTimerInput, nowMs = Date.now()): S
   machine.startTimeMs = nowMs;
   machine.endTime = endTimeMs;
   machine.cycleEndedAtMs = null;
+
+  // Also notify backend (fire-and-forget for now)
+  if (!isUsingMock()) {
+    startCycle({
+      house: input.houseId,
+      machine_name: input.machineId,
+      username: input.username,
+      duration_mins: input.durationMins,
+    }).catch((err) => {
+      console.error("Failed to notify backend of cycle start:", err);
+    });
+  }
 
   return { ok: true, updatedStatus: next };
 }

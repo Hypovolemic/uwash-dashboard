@@ -10,6 +10,7 @@ import { InlineAnalyticsSection } from "./components/InlineAnalyticsSection";
 import { SectionSwitchBar } from "./components/SectionSwitchBar";
 import { mockStatus, mockQueue, mockBuddyWash, mockAnalyticsGaruda } from "./data/mock";
 import { useTick } from "./hooks/useTick";
+import { useStatus } from "./hooks/useStatus";
 import { useTelebotCore } from "./hooks/useTelebotCore";
 import { getTelegramIdentity } from "./api/telegramIdentity";
 
@@ -24,6 +25,12 @@ function StatusView() {
   const washerSectionRef = useRef<HTMLDivElement | null>(null);
   const dryerSectionRef = useRef<HTMLDivElement | null>(null);
   const analyticsSectionRef = useRef<HTMLDivElement | null>(null);
+
+  // Fetch status from backend (falls back to mock if VITE_USE_MOCK=true)
+  const { status: backendStatus, loading, error } = useStatus({ house: houseId });
+
+  // Use backend status as template, fallback to mockStatus
+  const templateStatus = backendStatus ?? mockStatus;
 
   const {
     status,
@@ -41,7 +48,7 @@ function StatusView() {
     collegeId: collegeId ?? mockStatus.college,
     houseId: houseId ?? mockStatus.house,
     userId: telegramIdentity?.userId ?? "dashboard-user",
-    templateStatus: mockStatus,
+    templateStatus,
   });
 
   const entries = Object.entries(status.machines);
@@ -74,6 +81,25 @@ function StatusView() {
       sectionNode.getBoundingClientRect().top + window.scrollY - topOffsetPx;
 
     window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  }
+
+  // Show loading state
+  if (loading && !backendStatus) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-gray-500">Loading machines...</p>
+      </div>
+    );
+  }
+
+  // Show error state (but still render if we have cached data)
+  if (error && !backendStatus) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <p className="text-red-500">Failed to load: {error}</p>
+        <p className="text-sm text-gray-400">Using mock data as fallback</p>
+      </div>
+    );
   }
 
   return (
