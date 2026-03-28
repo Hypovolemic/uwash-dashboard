@@ -85,7 +85,7 @@ export function TelebotControlPanel({
 
       <div className="flex flex-col gap-2">
         <p className="text-sm font-medium text-slate-700">Duration</p>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-3 gap-3 w-full">
           {durationOptions.map((mins) => {
             const active = mins === selectedDurationMins;
             return (
@@ -93,7 +93,7 @@ export function TelebotControlPanel({
                 key={mins}
                 type="button"
                 onClick={() => onDurationChange(mins)}
-                className={`min-h-[40px] rounded-full px-4 text-sm font-medium transition-all ${
+                className={`w-full min-h-[44px] rounded-xl px-2 text-sm font-semibold text-center transition-all ${
                   active
                     ? "bg-blue-600 text-white shadow-md shadow-blue-100"
                     : "bg-white text-slate-700 border border-blue-100 hover:bg-blue-50"
@@ -106,7 +106,7 @@ export function TelebotControlPanel({
         </div>
       </div>
 
-      <div className="flex items-center gap-3 pt-1">
+      <div className="flex items-center justify-center gap-3 pt-1">
         <button
           type="button"
           onClick={() => {
@@ -117,9 +117,9 @@ export function TelebotControlPanel({
                 : result.reason ?? "Unable to set timer right now."
             );
           }}
-          className="min-h-[46px] rounded-xl bg-blue-600 text-white px-6 text-sm font-semibold tracking-wide shadow-md shadow-blue-200 hover:bg-blue-700 transition-all"
+          className="min-h-[46px] rounded-xl bg-blue-600 text-white px-8 text-sm font-semibold tracking-wide shadow-sm shadow-blue-200 hover:bg-blue-700 transition-all"
         >
-          🚀 Start Wash
+          Start Wash
         </button>
 
         {feedback && <p className="text-xs text-slate-600">{feedback}</p>}

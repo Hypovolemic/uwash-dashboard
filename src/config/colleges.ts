@@ -1,4 +1,13 @@
 export const COLLEGES = [
+   {
+    id: "acacia",
+    label: "Acacia",
+    houses: [
+      { id: "aeon", label: "Aeon" },
+      { id: "nous", label: "Nous" },
+      { id: "zenith", label: "Zenith" },
+    ],
+  },
   {
     id: "capt",
     label: "CAPT",
@@ -36,20 +45,25 @@ export const COLLEGES = [
     id: "rvrc",
     label: "RVRC",
     houses: [
-      { id: "sector-a", label: "Sector A" },
-      { id: "sector-b", label: "Sector B" },
-      { id: "sector-c", label: "Sector C" },
-      { id: "sector-d", label: "Sector D" },
+      { id: "aonyx", label: "Aonyx" },
+      { id: "chelonia", label: "Chelonia" },
+      { id: "manis", label: "Manis" },
+      { id: "orcaella", label: "Orcaella" },
+      { id: "panthera", label: "Panthera" },
+      { id: "rusa", label: "Rusa" },
+      { id: "strix", label: "Strix" },
     ],
   },
   {
     id: "nusc",
     label: "NUS College",
     houses: [
-      { id: "house-1", label: "House 1" },
-      { id: "house-2", label: "House 2" },
-      { id: "house-3", label: "House 3" },
-      { id: "house-4", label: "House 4" },
+      { id: "kairos", label: "Kairos" },
+      { id: "levios", label: "Levios" },
+      { id: "idalia", label: "Idalia" },
+      { id: "osceanna", label: "Osceanna" },
+      { id: "corvex", label: "Corvex" },
+      { id: "perseus", label: "Perseus" },
     ],
   },
 ] as const;

@@ -29,11 +29,13 @@ export function useTelebotCore({
   userId,
   templateStatus,
 }: UseTelebotCoreInput) {
+  const houseScopeKey = `${collegeId}:${houseId}`;
   const telegramIdentity = useMemo(() => getTelegramIdentity(), []);
   const [status, setStatus] = useState<StatusResponse>(() =>
     applyHouseContextToStatus(templateStatus, collegeId, houseId)
   );
   const [alerts, setAlerts] = useState<TelebotAlert[]>([]);
+  const [collectedOverrides, setCollectedOverrides] = useState<Record<string, true>>({});
   const [username, setUsername] = useState(() => telegramIdentity?.username ?? "resident_user");
 
   const machineIds = useMemo(() => Object.keys(status.machines), [status.machines]);
@@ -52,14 +54,47 @@ export function useTelebotCore({
     if (!saved || saved.collegeId !== collegeId || saved.houseId !== houseId) {
       setHouseSelection(userId, collegeId, houseId);
     }
+  }, [collegeId, houseId, userId]);
 
+  useEffect(() => {
+    setCollectedOverrides({});
+  }, [houseScopeKey]);
+
+  useEffect(() => {
     const nextStatus = applyHouseContextToStatus(templateStatus, collegeId, houseId);
+    for (const [machineId, machine] of Object.entries(nextStatus.machines)) {
+      if (collectedOverrides[machineId] && machine.status === "idle") {
+        machine.status = "available";
+        machine.currUser = null;
+        machine.startTimeMs = null;
+        machine.endTime = null;
+        machine.cycleEndedAtMs = null;
+        machine.hardwareDetected = false;
+      }
+    }
     setStatus(nextStatus);
     const nextMachineIds = Object.keys(nextStatus.machines);
-    const nextMachineId = nextMachineIds[0] ?? "";
-    setSelectedMachineId(nextMachineId);
-    setSelectedDurationMins(getDurationOptions(nextMachineId || "Washer One")[0]);
-  }, [collegeId, houseId, templateStatus, userId]);
+
+    setCollectedOverrides((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [machineId, machine] of Object.entries(nextStatus.machines)) {
+        if (next[machineId] && machine.status !== "idle") {
+          delete next[machineId];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+
+    setSelectedMachineId((prevMachineId) => {
+      if (prevMachineId && nextMachineIds.includes(prevMachineId)) {
+        return prevMachineId;
+      }
+
+      return nextMachineIds[0] ?? "";
+    });
+  }, [collegeId, houseId, collectedOverrides, templateStatus]);
 
   useEffect(() => {
     if (!selectedMachineId) return;
@@ -117,6 +152,40 @@ export function useTelebotCore({
     setAlerts((prev) => prev.filter((alert) => alert.id !== id));
   }
 
+  function markCollected(machineId: string) {
+    setStatus((prev) => {
+      const machine = prev.machines[machineId];
+      if (!machine) return prev;
+
+      const next: StatusResponse = {
+        ...prev,
+        lastUpdatedMs: Date.now(),
+        machines: {
+          ...prev.machines,
+          [machineId]: {
+            ...machine,
+            status: "available",
+            currUser: null,
+            startTimeMs: null,
+            endTime: null,
+            cycleEndedAtMs: null,
+            hardwareDetected: false,
+          },
+        },
+      };
+
+      return next;
+    });
+
+    setCollectedOverrides((prev) => {
+      if (prev[machineId]) return prev;
+      return {
+        ...prev,
+        [machineId]: true,
+      };
+    });
+  }
+
   return {
     status,
     username,
@@ -130,5 +199,6 @@ export function useTelebotCore({
     alerts,
     setTimer,
     dismissAlert,
+    markCollected,
   };
 }

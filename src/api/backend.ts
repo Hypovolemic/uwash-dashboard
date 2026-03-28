@@ -3,16 +3,29 @@ import type { QueueResponse, StatusResponse } from "../types/api";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
 
-export async function fetchStatus(house: string): Promise<StatusResponse> {
+export async function fetchStatus(house: string, college?: string | null): Promise<StatusResponse> {
   if (USE_MOCK) {
     throw new Error("Mock mode enabled - use mock data instead");
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/${house}/status`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch status: ${response.statusText}`);
+  // Support both backend route shapes:
+  // 1) /api/{college}/{house}/status
+  // 2) /api/{house}/status (legacy)
+  const urls = [
+    ...(college ? [`${API_BASE_URL}/api/${college}/${house}/status`] : []),
+    `${API_BASE_URL}/api/${house}/status`,
+  ];
+
+  let lastStatusText = "Unknown error";
+  for (const url of urls) {
+    const response = await fetch(url);
+    if (response.ok) {
+      return response.json();
+    }
+    lastStatusText = response.statusText || `HTTP ${response.status}`;
   }
-  return response.json();
+
+  throw new Error(`Failed to fetch status: ${lastStatusText}`);
 }
 
 export async function fetchAllStatus(): Promise<Record<string, StatusResponse>> {
@@ -27,94 +40,29 @@ export async function fetchAllStatus(): Promise<Record<string, StatusResponse>> 
   return response.json();
 }
 
-async function fetchFirstAvailable(
-  pathCandidates: string[],
-  init?: RequestInit
-): Promise<Response> {
-  let lastResponse: Response | null = null;
-  let lastError: unknown = null;
-
-  for (const path of pathCandidates) {
-    try {
-      const response = await fetch(`${API_BASE_URL}${path}`, init);
-      if (response.ok) {
-        return response;
-      }
-
-      lastResponse = response;
-      if (response.status !== 404) {
-        return response;
-      }
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  if (lastResponse) {
-    return lastResponse;
-  }
-
-  if (lastError instanceof Error) {
-    throw lastError;
-  }
-
-  throw new Error("Request failed for all endpoint candidates");
-}
-
 export async function fetchQueue(house: string, college?: string | null): Promise<QueueResponse> {
-  const encodedHouse = encodeURIComponent(house);
-  const encodedCollege = college ? encodeURIComponent(college) : null;
-  const paths = [
-    encodedCollege ? `/api/${encodedCollege}/${encodedHouse}/queue` : "",
-    `/api/${encodedHouse}/queue`,
-    `/api/queue?house=${encodedHouse}`,
-  ].filter(Boolean);
-
-  const response = await fetchFirstAvailable(paths);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch queue: ${response.status} ${response.statusText}`);
+  if (USE_MOCK) {
+    throw new Error("Mock mode enabled - use mock data instead");
   }
 
-  return response.json();
-}
+  const urls = [
+    ...(college ? [`${API_BASE_URL}/api/${college}/${house}/queue`] : []),
+    `${API_BASE_URL}/api/${house}/queue`,
+    `${API_BASE_URL}/api/queue?house=${encodeURIComponent(house)}${
+      college ? `&college=${encodeURIComponent(college)}` : ""
+    }`,
+  ];
 
-type JoinQueueInput = {
-  house: string;
-  machineId: string;
-  username: string;
-  college?: string | null;
-};
-
-export async function joinQueue(input: JoinQueueInput): Promise<void> {
-  const encodedHouse = encodeURIComponent(input.house);
-  const encodedCollege = input.college ? encodeURIComponent(input.college) : null;
-  const payload = {
-    college: input.college ?? undefined,
-    house: input.house,
-    machineId: input.machineId,
-    machine_name: input.machineId,
-    username: input.username,
-  };
-
-  const paths = [
-    encodedCollege ? `/api/${encodedCollege}/${encodedHouse}/queue/join` : "",
-    `/api/${encodedHouse}/queue/join`,
-    `/api/queue/join`,
-    `/api/join-queue`,
-  ].filter(Boolean);
-
-  const response = await fetchFirstAvailable(paths, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(error.error || `Failed to join queue: ${response.statusText}`);
+  let lastStatusText = "Unknown error";
+  for (const url of urls) {
+    const response = await fetch(url);
+    if (response.ok) {
+      return response.json();
+    }
+    lastStatusText = response.statusText || `HTTP ${response.status}`;
   }
+
+  throw new Error(`Failed to fetch queue: ${lastStatusText}`);
 }
 
 export type StartCycleInput = {
@@ -131,6 +79,50 @@ export type StartCycleResponse = {
   username: string;
   endTimeMs: number;
 };
+
+export type JoinQueueInput = {
+  college?: string | null;
+  house: string;
+  machineId: string;
+  username: string;
+};
+
+export async function joinQueue(input: JoinQueueInput): Promise<{ ok: boolean; message?: string }> {
+  const endpoints = [
+    `${API_BASE_URL}/api/queue/join`,
+    `${API_BASE_URL}/api/join-queue`,
+    `${API_BASE_URL}/api/queue`,
+  ];
+
+  const payload = {
+    college: input.college,
+    house: input.house,
+    machine_name: input.machineId,
+    machineId: input.machineId,
+    username: input.username,
+  };
+
+  let lastError = "Failed to join queue";
+  for (const endpoint of endpoints) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      const data = await response.json().catch(() => ({ ok: true }));
+      return { ok: true, message: data?.message };
+    }
+
+    const error = await response.json().catch(() => ({ error: response.statusText }));
+    lastError = error.error || `Failed to join queue (${response.status})`;
+  }
+
+  throw new Error(lastError);
+}
 
 export async function startCycle(input: StartCycleInput): Promise<StartCycleResponse> {
   const response = await fetch(`${API_BASE_URL}/api/start-cycle`, {

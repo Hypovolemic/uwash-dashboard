@@ -3,7 +3,10 @@ import type { MachineStatusEntry } from "../types/api";
 type Props = {
   machineId: string;
   entry: MachineStatusEntry;
-  onQueueTap: () => void;
+  onJoinQueue: (machineId: string) => void;
+  onMarkCollected: (machineId: string) => void;
+  joiningQueue?: boolean;
+  markingCollected?: boolean;
 };
 
 type Variant = "available" | "registered" | "unregistered" | "finishing" | "idle";
@@ -77,10 +80,19 @@ const progressFill: Record<"registered" | "unregistered" | "finishing", string> 
   finishing:    "bg-gray-200",
 };
 
-export function MachineCard({ machineId, entry, onQueueTap }: Props) {
+export function MachineCard({
+  machineId,
+  entry,
+  onJoinQueue,
+  onMarkCollected,
+  joiningQueue = false,
+  markingCollected = false,
+}: Props) {
   const variant = getVariant(entry);
   const Icon = entry.kind === "washer" ? WasherIcon : DryerIcon;
   const kindLabel = entry.kind === "washer" ? "Washer" : "Dryer";
+  const isQueueFull = entry.queueLength >= 3;
+  const canJoinQueue = entry.status === "in_use" && !isQueueFull;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex flex-col overflow-hidden">
@@ -150,24 +162,42 @@ export function MachineCard({ machineId, entry, onQueueTap }: Props) {
 
         {/* Idle */}
         {variant === "idle" && (
-          <div className="flex-1 flex flex-col justify-center gap-1">
-            <p className="text-xs font-semibold text-amber-500">{kindLabel}: Done</p>
-            <p className="text-xs text-amber-400">Done for {formatIdleElapsed(entry.cycleEndedAtMs ?? entry.endTime)}</p>
-            <p className="text-xs text-gray-400">
-              Please collect{entry.currUser ? ` · @${entry.currUser}` : ""}
-            </p>
+          <div className="flex-1 flex flex-col justify-center gap-2">
+            <div className="flex flex-col gap-1">
+              <p className="text-xs font-semibold text-amber-500">{kindLabel}: Done</p>
+              <p className="text-xs text-amber-400">Done for {formatIdleElapsed(entry.cycleEndedAtMs ?? entry.endTime)}</p>
+              <p className="text-xs text-gray-400">
+                Please collect{entry.currUser ? ` · @${entry.currUser}` : ""}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onMarkCollected(machineId)}
+              disabled={markingCollected}
+              className="w-full min-h-[30px] rounded-md text-xs font-semibold border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {markingCollected ? "Updating..." : "Done"}
+            </button>
           </div>
         )}
 
-        {/* Queue — tappable row, only when > 0 */}
-        {entry.queueLength > 0 && (
-          <button
-            onClick={onQueueTap}
-            className="flex items-center justify-between w-full pt-2 border-t border-gray-100 text-left"
-          >
-            <p className="text-xs text-gray-400">View queue ({entry.queueLength})</p>
-            <p className="text-xs text-gray-300">›</p>
-          </button>
+        {/* Queue action */}
+        {(canJoinQueue || isQueueFull || entry.queueLength > 0) && (
+          <div className="pt-2 border-t border-gray-100">
+            {canJoinQueue ? (
+              <button
+                onClick={() => onJoinQueue(machineId)}
+                disabled={joiningQueue}
+                className="w-full min-h-[30px] rounded-md text-xs font-semibold bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {joiningQueue ? "Joining..." : `Join queue${entry.queueLength > 0 ? ` (${entry.queueLength})` : ""}`}
+              </button>
+            ) : (
+              <p className="text-xs text-gray-400">
+                {isQueueFull ? `Queue full (${entry.queueLength}/3)` : `Queue: ${entry.queueLength}`}
+              </p>
+            )}
+          </div>
         )}
 
       </div>

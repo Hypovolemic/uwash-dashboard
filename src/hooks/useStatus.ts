@@ -4,6 +4,7 @@ import { fetchStatus, isUsingMock } from "../api/backend";
 import { mockStatus } from "../data/mock";
 
 type UseStatusInput = {
+  college?: string | null;
   house: string | null;
   pollIntervalMs?: number;
 };
@@ -15,7 +16,7 @@ type UseStatusResult = {
   refetch: () => void;
 };
 
-export function useStatus({ house, pollIntervalMs = 5000 }: UseStatusInput): UseStatusResult {
+export function useStatus({ college, house, pollIntervalMs = 5000 }: UseStatusInput): UseStatusResult {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,11 +41,17 @@ export function useStatus({ house, pollIntervalMs = 5000 }: UseStatusInput): Use
     }
 
     try {
-      const data = await fetchStatus(house);
+      const data = await fetchStatus(house, college);
       setStatus(data);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch status");
+      setStatus({
+        ...mockStatus,
+        house,
+        college: college ?? mockStatus.college,
+        lastUpdatedMs: Date.now(),
+      });
     } finally {
       setLoading(false);
     }
@@ -66,7 +73,7 @@ export function useStatus({ house, pollIntervalMs = 5000 }: UseStatusInput): Use
       clearInterval(interval);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [house, pollIntervalMs]);
+  }, [college, house, pollIntervalMs]);
 
   return {
     status,

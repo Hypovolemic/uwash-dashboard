@@ -11,10 +11,51 @@ import { SectionSwitchBar } from "./components/SectionSwitchBar";
 import { mockStatus, mockQueue, mockBuddyWash, mockAnalyticsGaruda } from "./data/mock";
 import { useTick } from "./hooks/useTick";
 import { useStatus } from "./hooks/useStatus";
+import { useQueue } from "./hooks/useQueue";
 import { useTelebotCore } from "./hooks/useTelebotCore";
 import { getTelegramIdentity } from "./api/telegramIdentity";
 
 type SectionKey = "washer" | "dryer" | "analytics";
+
+const MACHINE_NUMBER_WORDS: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+};
+
+function extractMachineOrder(machineId: string): number {
+  const numericMatch = machineId.match(/\d+/);
+  if (numericMatch) return Number(numericMatch[0]);
+
+  const tokens = machineId.toLowerCase().split(/\s+/);
+  for (const token of tokens) {
+    if (MACHINE_NUMBER_WORDS[token] !== undefined) {
+      return MACHINE_NUMBER_WORDS[token];
+    }
+  }
+
+  return Number.MAX_SAFE_INTEGER;
+}
+
+function compareMachineIds(a: string, b: string): number {
+  const aPrefix = a.toLowerCase().startsWith("washer") ? 0 : 1;
+  const bPrefix = b.toLowerCase().startsWith("washer") ? 0 : 1;
+
+  if (aPrefix !== bPrefix) return aPrefix - bPrefix;
+
+  const aOrder = extractMachineOrder(a);
+  const bOrder = extractMachineOrder(b);
+  if (aOrder !== bOrder) return aOrder - bOrder;
+
+  return a.localeCompare(b);
+}
 
 function StatusView() {
   useTick(1000);
@@ -22,12 +63,25 @@ function StatusView() {
   const telegramIdentity = useMemo(() => getTelegramIdentity(), []);
   const [queueOpen, setQueueOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionKey>("washer");
+  const [joiningMachineId, setJoiningMachineId] = useState<string | null>(null);
+  const [markingCollectedMachineId, setMarkingCollectedMachineId] = useState<string | null>(null);
+  const [queueActionMessage, setQueueActionMessage] = useState<string | null>(null);
   const washerSectionRef = useRef<HTMLDivElement | null>(null);
   const dryerSectionRef = useRef<HTMLDivElement | null>(null);
   const analyticsSectionRef = useRef<HTMLDivElement | null>(null);
 
   // Fetch status from backend (falls back to mock if VITE_USE_MOCK=true)
-  const { status: backendStatus, loading, error } = useStatus({ house: houseId });
+  const { status: backendStatus, loading, error } = useStatus({
+    college: collegeId,
+    house: houseId,
+  });
+  const {
+    queue: backendQueue,
+    join: joinQueue,
+  } = useQueue({
+    college: collegeId,
+    house: houseId,
+  });
 
   // Use backend status as template, fallback to mockStatus
   const templateStatus = backendStatus ?? mockStatus;
@@ -44,6 +98,7 @@ function StatusView() {
     alerts,
     setTimer,
     dismissAlert,
+    markCollected,
   } = useTelebotCore({
     collegeId: collegeId ?? mockStatus.college,
     houseId: houseId ?? mockStatus.house,
@@ -51,7 +106,10 @@ function StatusView() {
     templateStatus,
   });
 
-  const entries = Object.entries(status.machines);
+  const entries = useMemo(
+    () => Object.entries(status.machines).sort(([a], [b]) => compareMachineIds(a, b)),
+    [status.machines]
+  );
   const washers = entries.filter(([, e]) => e.kind === "washer");
   const dryers  = entries.filter(([, e]) => e.kind === "dryer");
   const userOptions = Array.from(
@@ -81,6 +139,33 @@ function StatusView() {
       sectionNode.getBoundingClientRect().top + window.scrollY - topOffsetPx;
 
     window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  }
+
+  async function handleJoinQueueFromCard(machineId: string) {
+    setQueueActionMessage(null);
+    setJoiningMachineId(machineId);
+    try {
+      await joinQueue(machineId, username);
+      setQueueActionMessage(`Joined queue for ${machineId}`);
+      setQueueOpen(true);
+    } catch (err) {
+      setQueueActionMessage(err instanceof Error ? err.message : "Failed to join queue");
+    } finally {
+      setJoiningMachineId(null);
+    }
+  }
+
+  function handleMarkCollected(machineId: string) {
+    setMarkingCollectedMachineId(machineId);
+    try {
+      markCollected(machineId);
+    } finally {
+      window.setTimeout(() => {
+        setMarkingCollectedMachineId((current) =>
+          current === machineId ? null : current
+        );
+      }, 250);
+    }
   }
 
   // Show loading state
@@ -121,14 +206,27 @@ function StatusView() {
       />
 
       <IdleAlertBanner status={status} />
-      <StatsStrip status={status} onQueueTap={() => setQueueOpen(true)} />
+      <StatsStrip onQueueTap={() => setQueueOpen(true)} />
+      {queueActionMessage && (
+        <p className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+          {queueActionMessage}
+        </p>
+      )}
 
       {/* Washers row */}
       <div ref={washerSectionRef} className="flex flex-col gap-2 scroll-mt-44">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Washers</p>
         <div className="grid grid-cols-3 gap-3">
           {washers.map(([machineId, entry]) => (
-            <MachineCard key={machineId} machineId={machineId} entry={entry} onQueueTap={() => setQueueOpen(true)} />
+            <MachineCard
+              key={machineId}
+              machineId={machineId}
+              entry={entry}
+              onJoinQueue={handleJoinQueueFromCard}
+              onMarkCollected={handleMarkCollected}
+              joiningQueue={joiningMachineId === machineId}
+              markingCollected={markingCollectedMachineId === machineId}
+            />
           ))}
         </div>
       </div>
@@ -138,7 +236,15 @@ function StatusView() {
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Dryers</p>
         <div className="grid grid-cols-3 gap-3">
           {dryers.map(([machineId, entry]) => (
-            <MachineCard key={machineId} machineId={machineId} entry={entry} onQueueTap={() => setQueueOpen(true)} />
+            <MachineCard
+              key={machineId}
+              machineId={machineId}
+              entry={entry}
+              onJoinQueue={handleJoinQueueFromCard}
+              onMarkCollected={handleMarkCollected}
+              joiningQueue={joiningMachineId === machineId}
+              markingCollected={markingCollectedMachineId === machineId}
+            />
           ))}
         </div>
       </div>
@@ -157,7 +263,11 @@ function StatusView() {
       <QueueSheet
         open={queueOpen}
         onClose={() => setQueueOpen(false)}
-        queue={mockQueue}
+        queue={backendQueue ?? mockQueue}
+        machineIds={entries.map(([machineId]) => machineId)}
+        machineStatusById={status.machines}
+        username={username}
+        onJoinQueue={joinQueue}
       />
     </div>
   );

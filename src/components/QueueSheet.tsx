@@ -1,17 +1,48 @@
-import type { QueueResponse } from "../types/api";
+import { useMemo, useState } from "react";
+import type { MachineStatusEntry, QueueResponse } from "../types/api";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   queue: QueueResponse;
+  machineIds: string[];
+  machineStatusById: Record<string, MachineStatusEntry>;
+  username: string;
+  onJoinQueue: (machineId: string, username: string) => Promise<void>;
 };
 
 const AVG_CYCLE_MINS = 45;
+const MAX_QUEUE_PER_MACHINE = 3;
 
-export function QueueSheet({ open, onClose, queue }: Props) {
-  const machinesWithQueue = Object.entries(queue.byMachine).filter(
-    ([, q]) => q.queueLength > 0
+export function QueueSheet({
+  open,
+  onClose,
+  queue,
+  machineIds,
+  machineStatusById,
+  username,
+  onJoinQueue,
+}: Props) {
+  const [joiningMachineId, setJoiningMachineId] = useState<string | null>(null);
+  const [joinMessage, setJoinMessage] = useState<string | null>(null);
+
+  const allMachineIds = useMemo(
+    () => Array.from(new Set([...machineIds, ...Object.keys(queue.byMachine)])),
+    [machineIds, queue.byMachine]
   );
+
+  async function handleJoin(machineId: string) {
+    setJoinMessage(null);
+    setJoiningMachineId(machineId);
+    try {
+      await onJoinQueue(machineId, username);
+      setJoinMessage(`Joined queue for ${machineId}`);
+    } catch (err) {
+      setJoinMessage(err instanceof Error ? err.message : "Failed to join queue");
+    } finally {
+      setJoiningMachineId(null);
+    }
+  }
 
   return (
     <>
@@ -36,7 +67,10 @@ export function QueueSheet({ open, onClose, queue }: Props) {
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-          <p className="text-base font-semibold text-gray-900">Queue</p>
+          <div>
+            <p className="text-base font-semibold text-gray-900">Queue</p>
+            <p className="text-xs text-gray-400">All washers and dryers</p>
+          </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
@@ -47,20 +81,49 @@ export function QueueSheet({ open, onClose, queue }: Props) {
 
         {/* Content */}
         <div className="overflow-y-auto max-h-[65vh] px-5 pb-10">
-          {machinesWithQueue.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-12">
-              No queues right now
+          {joinMessage && (
+            <p className="text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 mt-4">
+              {joinMessage}
             </p>
-          ) : (
-            machinesWithQueue.map(([machineId, queueEntry]) => (
+          )}
+
+          {allMachineIds.map((machineId) => {
+            const queueEntry = queue.byMachine[machineId] ?? {
+              queueLength: 0,
+              estWaitMins: 0,
+              members: [],
+            };
+
+            const isUserInQueue = queueEntry.members.some((m) => m.username === username);
+            const isFull = queueEntry.queueLength >= MAX_QUEUE_PER_MACHINE;
+            const isJoining = joiningMachineId === machineId;
+            const machineState = machineStatusById[machineId]?.status;
+            const canJoin = machineState === "in_use";
+
+            return (
               <div key={machineId} className="mt-5">
                 {/* Machine label */}
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
-                  {machineId}
-                </p>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
+                    {machineId}
+                  </p>
+                  {canJoin && (
+                    <button
+                      onClick={() => handleJoin(machineId)}
+                      disabled={isFull || isUserInQueue || isJoining}
+                      className="text-xs font-semibold px-2.5 py-1 rounded-full border border-blue-200 text-blue-700 bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {isJoining ? "Joining..." : isUserInQueue ? "Joined" : isFull ? "Full" : "Join"}
+                    </button>
+                  )}
+                </div>
 
                 {/* Members */}
-                <div className="flex flex-col divide-y divide-gray-50">
+                <div className="flex flex-col divide-y divide-gray-50 rounded-lg border border-gray-100 px-3">
+                  {queueEntry.members.length === 0 && (
+                    <p className="text-xs text-gray-400 py-3">No one in queue</p>
+                  )}
+
                   {queueEntry.members.map((member) => {
                     const estWait =
                       queueEntry.estWaitMins +
@@ -96,8 +159,8 @@ export function QueueSheet({ open, onClose, queue }: Props) {
                   })}
                 </div>
               </div>
-            ))
-          )}
+            );
+          })}
         </div>
       </div>
     </>
