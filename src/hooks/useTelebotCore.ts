@@ -10,6 +10,7 @@ import {
   startMachineTimer,
   sweepMachineState,
 } from "../api/telebot";
+import { markCollected as markCollectedApi } from "../api/backend";
 
 export type TelebotAlert = {
   id: string;
@@ -152,38 +153,45 @@ export function useTelebotCore({
     setAlerts((prev) => prev.filter((alert) => alert.id !== id));
   }
 
-  function markCollected(machineId: string) {
-    setStatus((prev) => {
-      const machine = prev.machines[machineId];
-      if (!machine) return prev;
-
-      const next: StatusResponse = {
-        ...prev,
-        lastUpdatedMs: Date.now(),
-        machines: {
-          ...prev.machines,
-          [machineId]: {
-            ...machine,
-            status: "available",
-            currUser: null,
-            startTimeMs: null,
-            endTime: null,
-            cycleEndedAtMs: null,
-            hardwareDetected: false,
+  // Updated markCollected to call backend
+  async function markCollected(machineId: string) {
+    // Find house and telegram_id (username)
+    const telegram_id = telegramIdentity?.userId || username || "dashboard-user";
+    // Use houseId from hook scope
+    const input = { house: houseId, machine_name: machineId, telegram_id };
+    const result = await markCollectedApi(input);
+    if (result.ok) {
+      setStatus((prev) => {
+        const machine = prev.machines[machineId];
+        if (!machine) return prev;
+        const next: StatusResponse = {
+          ...prev,
+          lastUpdatedMs: Date.now(),
+          machines: {
+            ...prev.machines,
+            [machineId]: {
+              ...machine,
+              status: "available",
+              currUser: null,
+              startTimeMs: null,
+              endTime: null,
+              cycleEndedAtMs: null,
+              hardwareDetected: false,
+            },
           },
-        },
-      };
-
-      return next;
-    });
-
-    setCollectedOverrides((prev) => {
-      if (prev[machineId]) return prev;
-      return {
-        ...prev,
-        [machineId]: true,
-      };
-    });
+        };
+        return next;
+      });
+      setCollectedOverrides((prev) => {
+        if (prev[machineId]) return prev;
+        return {
+          ...prev,
+          [machineId]: true,
+        };
+      });
+    }
+    // Optionally: handle error UI here
+    return result;
   }
 
   return {

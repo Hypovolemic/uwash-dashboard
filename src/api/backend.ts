@@ -141,6 +141,24 @@ export async function startCycle(input: StartCycleInput): Promise<StartCycleResp
   return response.json();
 }
 
+// Add markCollected API call
+export async function markCollected(input: { house: string; machine_name: string; telegram_id: string }): Promise<{ ok: boolean; message?: string }> {
+  const endpoint = `${API_BASE_URL}/api/collect`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: response.statusText }));
+    return { ok: false, message: error.error || "Failed to mark as collected" };
+  }
+  const data = await response.json().catch(() => ({}));
+  return { ok: true, message: data?.message };
+}
+
 export function isUsingMock(): boolean {
   return USE_MOCK;
 }

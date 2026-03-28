@@ -116,6 +116,7 @@ export function TelebotControlPanel({
                 ? `Timer set for ${selectedDurationMins} mins on ${selectedMachineId}.`
                 : result.reason ?? "Unable to set timer right now."
             );
+            setTimeout(() => setFeedback(null), 2000); // Clear feedback after 2s
           }}
           className="min-h-[46px] rounded-xl bg-blue-600 text-white px-8 text-sm font-semibold tracking-wide shadow-sm shadow-blue-200 hover:bg-blue-700 transition-all"
         >
